@@ -20,7 +20,7 @@
 const CONFIG = {
   BACKEND_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8000'
-    : '',  // Empty = same origin (Render serves frontend + backend together)
+    : https://chatclaude-ucfe.onrender.com,  // Empty = same origin (Render serves frontend + backend together)
 
   // Gaza Strip default view
   DEFAULT_LAT:  31.35,
