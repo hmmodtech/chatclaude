@@ -1,1 +1,75 @@
+# ============================================================
+# .gitignore — Gaza Security Dashboard
+# ------------------------------------------------------------
+# These files and folders are NOT uploaded to GitHub.
+# They either contain secrets or are auto-generated files
+# that don't need to be stored in version control.
+# ============================================================
 
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# ── Virtual environments (local Python installs) ──────────────
+venv/
+env/
+ENV/
+.venv/
+.env_backup
+
+# ── Environment / secrets files ───────────────────────────────
+# NEVER upload these — they contain passwords and API keys
+.env
+.env.local
+.env.production
+*.env
+
+# ── Database files ────────────────────────────────────────────
+# The SQLite database is created automatically on first run
+# Don't store it in GitHub (it resets on each Render deploy anyway)
+*.db
+*.sqlite
+*.sqlite3
+dashboard.db
+
+# ── Log files ─────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── OS-generated files ────────────────────────────────────────
+.DS_Store           # Mac
+.DS_Store?
+._*
+Thumbs.db           # Windows
+desktop.ini
+
+# ── IDE / editor settings ─────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Temporary / upload files ──────────────────────────────────
+uploads/
+tmp/
+temp/
+*.tmp
+
+# ── Node.js (if ever added) ───────────────────────────────────
+node_modules/
+package-lock.json
+
+# ── Render build cache ────────────────────────────────────────
+.render/
