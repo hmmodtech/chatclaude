@@ -1,1 +1,84 @@
 
+# ============================================================
+# render.yaml — Gaza Security Dashboard
+# ------------------------------------------------------------
+# This file tells Render exactly how to deploy your app.
+# Render reads this file automatically when you connect your
+# GitHub repository. It creates both services for you.
+#
+# HOW TO USE:
+#   Option A (automatic): Push this file to GitHub, then on
+#   Render click "New" → "Blueprint" → connect your repo.
+#   Render will create both services automatically.
+#
+#   Option B (manual): Create each service manually on Render
+#   using the settings shown below as a reference guide.
+# ============================================================
+
+services:
+
+  # ── BACKEND: Python FastAPI Server ────────────────────────────
+  - type: web
+    name: gaza-dashboard-api
+    runtime: python
+    region: frankfurt          # closest region to Palestine
+    plan: free
+
+    # Where the backend code lives in your repository
+    rootDir: backend
+
+    # Command Render runs to install your dependencies
+    buildCommand: pip install -r requirements.txt
+
+    # Command Render runs to start your server
+    # $PORT is automatically set by Render (usually 10000)
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+
+    # Health check — Render pings this to confirm the server is alive
+    healthCheckPath: /
+
+    # Environment variables
+    # Set SECRET values in the Render dashboard, NOT here
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: FRONTEND_URL
+        # ⚠ UPDATE THIS after your frontend is deployed
+        value: https://gaza-dashboard-frontend.onrender.com
+      # These are set in Render dashboard (leave blank here for security):
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true    # Render auto-generates a secure random value
+
+  # ── FRONTEND: Static HTML/CSS/JS Site ─────────────────────────
+  - type: web
+    name: gaza-dashboard-frontend
+    runtime: static
+    region: frankfurt
+
+    # Where the frontend code lives
+    rootDir: frontend
+
+    # No build needed — plain HTML/CSS/JS serves directly
+    buildCommand: echo "No build needed for plain HTML"
+
+    # The folder to serve (same as rootDir for plain HTML)
+    staticPublishPath: .
+
+    # Redirect all paths to index.html (single-page app behaviour)
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    envVars:
+      # ⚠ UPDATE THIS to your backend Render URL after deploying backend
+      - key: BACKEND_URL
+        value: https://gaza-dashboard-api.onrender.com
