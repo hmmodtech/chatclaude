@@ -18,8 +18,7 @@ const CONFIG = {
   BACKEND_URL: (window.location.hostname === 'localhost' ||
                 window.location.hostname === '127.0.0.1')
     ? 'http://localhost:8000'
-     : 'https://chatclaude-ucfe.onrender.com',  // ← Add your backend URL here
-    : '',   // empty = same origin on Render
+    : 'https://chatclaude-ucfe.onrender.com',   // ✅ أزل السطر الزائد تحته
 
   DEFAULT_LAT:  31.35,
   DEFAULT_LNG:  34.30,
