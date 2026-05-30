@@ -103,8 +103,8 @@ function initMap() {
       { attribution: '© Esri', maxZoom: 19 }
     )
   };
-  tileLayers.osm.addTo(map);
-
+tileLayers.osm.addTo(map);
+setTimeout(() => { map.invalidateSize(); }, 300);
   drawnItems = new L.FeatureGroup().addTo(map);
   drawControl = new L.Control.Draw({
     draw: {
