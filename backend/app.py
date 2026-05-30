@@ -435,7 +435,50 @@ async def join_map(sid, data):
 # ─────────────────────────────────────────────────────────────────────────────
 # AUTH ROUTES
 # ─────────────────────────────────────────────────────────────────────────────
-
+@_app.post("/api/layers/{layer_id}/features/bulk")
+async def bulk_add_features(layer_id: str, payload: dict = Body(...),
+                             user: dict = Depends(get_current_user)):
+    features = payload.get("features", [])
+    if not features:
+        return {"inserted": 0}
+    try:
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute("SELECT id FROM layers WHERE id=%s AND user_id=%s", (layer_id, user["id"]))
+        if not cur.fetchone():
+            cur.close(); conn.close()
+            raise HTTPException(403, "Layer not found")
+        
+        args = []
+        for feat in features:
+            fid = str(uuid.uuid4())
+            feat["id"] = fid
+            args.append((
+                fid, layer_id,
+                feat.get("type","point"), feat.get("name",""),
+                feat.get("description",""),
+                feat.get("lat"), feat.get("lon"),
+                json.dumps(feat.get("coords",[])),
+                feat.get("color","#3b82f6"),
+                feat.get("stroke_color","#3b82f6"),
+                feat.get("fill_color","#3b82f6"),
+                feat.get("fill_opacity",0.35),
+                json.dumps(feat.get("extended",{}))
+            ))
+        
+        psycopg2.extras.execute_values(cur, """
+            INSERT INTO features
+            (id,layer_id,type,name,description,lat,lon,coords,
+             color,stroke_color,fill_color,fill_opacity,extended)
+            VALUES %s
+        """, args)
+        
+        conn.commit(); cur.close(); conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(503, f"Database error: {e}")
+    
+    return {"inserted": len(features), "features": features}
 @_app.post("/api/auth/register")
 async def register(payload: dict = Body(...)):
     """
