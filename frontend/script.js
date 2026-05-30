@@ -1090,16 +1090,47 @@ async function confirmImport() {
   if (layerSel.value === '__new__') target = await createLayer('Imported Layer', CONFIG.COLORS[STATE.layers.length % CONFIG.COLORS.length]);
   if (!target) { showToast('Please select a layer','error'); return; }
   target.styleField = styleField;
+
+  // أضف للخريطة أولاً (فوري)
   for (const feat of STATE.importedFeatures) {
     target.features.push(feat);
     renderFeatureOnMap(feat, target);
-    if (AUTH.token) await apiSaveFeature(feat, target.id);
   }
   renderLayerList();
   closeModal('import-modal');
-  showToast(`✅ Imported ${STATE.importedFeatures.length} features to "${target.name}"`,'success');
+  showToast(`✅ Imported ${STATE.importedFeatures.length} features`, 'success');
+
+  // ثم احفظ في DB دفعة واحدة (في الخلفية)
+  if (AUTH.token && STATE.importedFeatures.length > 0) {
+    try {
+      const resp = await fetch(`${CONFIG.BACKEND_URL}/api/layers/${target.id}/features/bulk`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ features: STATE.importedFeatures.map(f => ({
+          type: f.type, name: f.name, description: f.description,
+          lat: f.lat, lon: f.lon, coords: f.coords || [],
+          color: f.color, stroke_color: f.stroke_color || f.color,
+          fill_color: f.fill_color || f.color,
+          fill_opacity: f.fill_opacity || 0.35,
+          extended: f.extended || {}
+        }))})
+      });
+      const data = await resp.json();
+      // حدّث الـ IDs من DB
+      data.features?.forEach((dbFeat, i) => {
+        if (target.features[i]) target.features[i].id = dbFeat.id;
+      });
+      showToast(`💾 Saved to database`, 'success');
+    } catch(e) {
+      showToast('Saved locally only: ' + e.message, 'info');
+    }
+  }
+
+  try { 
+    const b = target.leafletGroup.getBounds(); 
+    if (b.isValid()) map.fitBounds(b, {padding:[40,40]}); 
+  } catch(e){}
+  
   STATE.importedFeatures = [];
-  try { const b=target.leafletGroup.getBounds(); if(b.isValid()) map.fitBounds(b,{padding:[40,40]}); } catch(e){}
 }
 
 // ═══════════════════════════════════════════════════════════════
