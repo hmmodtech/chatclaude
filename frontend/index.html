@@ -3,691 +3,433 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Palestine Smart Security Dashboard</title>
-
-  <!-- ══ FONTS ══════════════════════════════════════════════════
-       Rajdhani = tactical/military headings
-       Inter    = clean readable body text
-  ════════════════════════════════════════════════════════════ -->
+  <title>WATCH-ME — Intelligent Security System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-
-  <!-- ══ LEAFLET (the map library — free, no API key needed) ═══
-       Loaded from CDN — no installation required.
-  ════════════════════════════════════════════════════════════ -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- ══ LEAFLET DRAW (drawing tools plugin) ═══════════════════ -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-  <!-- ══ JSZIP (for reading .kmz files, which are zipped KML) ══ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
-  <!-- ══ TOGEOJSON (converts KML to GeoJSON for Leaflet) ══════ -->
   <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
-
-  <!-- ══ OUR STYLESHEET ═════════════════════════════════════════ -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
-  <!-- ══ LOADING SCREEN ═══════════════════════════════════════════
-       Shown for 1.5 seconds while the map loads.
-       Fades out automatically.
-  ════════════════════════════════════════════════════════════ -->
-  <div id="loading-screen">
-    <div class="loading-logo">
-      🗺 Palestine<span>Smart Security Dashboard</span>
+<div id="loading-screen">
+  <div class="loading-logo">
+    <span class="watch-me-brand">WATCH-ME</span>
+    <span class="watch-me-sub">Intelligent Security System</span>
+  </div>
+  <div class="loading-bar-track"><div class="loading-bar-fill"></div></div>
+  <div class="text-muted" style="font-size:12px;letter-spacing:1px">INITIALIZING...</div>
+</div>
+
+<div id="auth-container" class="hidden">
+  <div id="login-page" class="auth-page">
+    <div class="auth-card glass">
+      <div class="auth-brand">
+        <div class="watch-me-brand" style="font-size:36px">WATCH-ME</div>
+        <div class="watch-me-sub" style="font-size:13px;margin-top:4px">Intelligent Security System</div>
+      </div>
+      <div id="auth-message" class="auth-message hidden"></div>
+      <div class="form-row">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="login-email" placeholder="your@email.com" autocomplete="email"/>
+      </div>
+      <div class="form-row mt-8">
+        <label class="form-label">Password</label>
+        <div class="input-eye-wrap">
+          <input type="password" class="form-input" id="login-password" placeholder="••••••••" autocomplete="current-password"/>
+          <button class="eye-btn" type="button" onclick="togglePass('login-password',this)">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full mt-12" id="login-btn">Sign In</button>
+      <div class="auth-footer">
+        Don't have an account? <span class="auth-link" onclick="showRegister()">Create account</span>
+      </div>
+      <div class="auth-footer">
+        <span class="auth-link" onclick="showResend()">Resend confirmation email</span>
+      </div>
     </div>
-    <div class="loading-bar-track">
-      <div class="loading-bar-fill"></div>
-    </div>
-    <div class="text-muted">Loading map data...</div>
   </div>
 
-  <!-- ══ TOAST NOTIFICATIONS ══════════════════════════════════════
-       Small popup messages ("Layer imported", "Alert sent", etc.)
-       They appear at the bottom of the screen.
-  ════════════════════════════════════════════════════════════ -->
-  <!-- Real-time incident broadcast banner -->
-  <div id="realtime-banner">
-    <span class="banner-text" id="banner-text">⚠ New incident reported</span>
-    <button class="banner-close" onclick="document.getElementById('realtime-banner').classList.remove('visible')">✕</button>
+  <div id="register-page" class="auth-page hidden">
+    <div class="auth-card glass">
+      <div class="auth-brand">
+        <div class="watch-me-brand" style="font-size:36px">WATCH-ME</div>
+        <div class="watch-me-sub" style="font-size:13px;margin-top:4px">Create Your Account</div>
+      </div>
+      <div id="reg-message" class="auth-message hidden"></div>
+      <div class="form-row">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="reg-name" placeholder="Ahmed Hassan"/>
+      </div>
+      <div class="form-row mt-8">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="reg-email" placeholder="your@email.com"/>
+      </div>
+      <div class="form-row mt-8">
+        <label class="form-label">Password (min 6 characters)</label>
+        <div class="input-eye-wrap">
+          <input type="password" class="form-input" id="reg-password" placeholder="••••••••"/>
+          <button class="eye-btn" type="button" onclick="togglePass('reg-password',this)">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full mt-12" id="register-btn">Create Account</button>
+      <div class="auth-footer">
+        Already have an account? <span class="auth-link" onclick="showLogin()">Sign in</span>
+      </div>
+    </div>
   </div>
 
-  <div id="toast-container"></div>
-
-  <!-- ══ MAIN APP LAYOUT ══════════════════════════════════════════
-       Two columns: #sidebar (left) and #map-container (right)
-  ════════════════════════════════════════════════════════════ -->
-  <div id="app">
-
-    <!-- ════════════════════════════════════════════════════════
-         LEFT SIDEBAR — Layer manager + Incident panel + Tools
-    ════════════════════════════════════════════════════════ -->
-    <aside id="sidebar">
-
-      <!-- Sidebar top bar with logo -->
-      <div id="sidebar-header">
-        <div class="app-logo">
-          Gaza<br/>Dashboard
-          <span>Smart Security System</span>
-        </div>
-        <!-- Import / Export buttons -->
-        <button class="ctrl-btn" id="import-btn" title="Import KML/KMZ/CSV/GeoJSON">⬆</button>
-        <button class="ctrl-btn" id="export-btn" title="Export layers">⬇</button>
-        <!-- Hidden file input — triggered by the import button -->
-        <input type="file" id="file-input" accept=".kml,.kmz,.csv,.geojson,.json" style="display:none" />
+  <div id="resend-page" class="auth-page hidden">
+    <div class="auth-card glass">
+      <div class="auth-brand">
+        <div class="watch-me-brand" style="font-size:32px">WATCH-ME</div>
+        <div class="watch-me-sub" style="font-size:13px;margin-top:4px">Resend Confirmation</div>
       </div>
-
-      <!-- Sidebar navigation tabs -->
-      <div id="sidebar-tabs">
-        <div class="sidebar-tab active" data-panel="layers">Layers</div>
-        <div class="sidebar-tab"        data-panel="incidents">Incidents</div>
-        <div class="sidebar-tab"        data-panel="alerts">Alerts</div>
+      <div id="resend-message" class="auth-message hidden"></div>
+      <div class="form-row">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="resend-email" placeholder="your@email.com"/>
       </div>
+      <button class="btn btn-primary btn-full mt-12" id="resend-btn">Resend Email</button>
+      <div class="auth-footer">
+        <span class="auth-link" onclick="showLogin()">Back to login</span>
+      </div>
+    </div>
+  </div>
+</div>
 
-      <!-- ── TAB 1: LAYER MANAGER ─────────────────────────────── -->
-      <div class="sidebar-panel active" id="panel-layers">
-        <div class="panel-scroll">
-          <div class="panel-section-title">Map Layers (max 15)</div>
+<div id="toast-container"></div>
 
-          <!-- Layer rows are injected here by JavaScript -->
-          <div id="layer-list"></div>
+<div id="realtime-banner">
+  <span class="banner-text" id="banner-text">New incident reported</span>
+  <button class="banner-close" onclick="document.getElementById('realtime-banner').classList.remove('visible')">X</button>
+</div>
+
+<div id="app" class="hidden">
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <div class="app-logo">
+        <span class="watch-me-brand sidebar-brand">WATCH-ME</span>
+        <span class="watch-me-sub-small">Intelligent Security System</span>
+      </div>
+      <button class="ctrl-btn" id="import-btn" title="Import KML/KMZ/CSV/GeoJSON">UP</button>
+      <button class="ctrl-btn" id="export-btn" title="Export">DL</button>
+      <input type="file" id="file-input" accept=".kml,.kmz,.csv,.geojson,.json" style="display:none"/>
+    </div>
+    <div id="sidebar-tabs">
+      <div class="sidebar-tab active" data-panel="layers">Layers</div>
+      <div class="sidebar-tab"        data-panel="incidents">Incidents</div>
+      <div class="sidebar-tab"        data-panel="alerts">Alerts</div>
+    </div>
+    <div class="sidebar-panel active" id="panel-layers">
+      <div class="panel-scroll">
+        <div class="panel-section-title">Map Layers (max 15)</div>
+        <div id="layer-list"></div>
+      </div>
+      <button id="add-layer-btn">
+        <span style="font-size:18px;line-height:1">+</span> Add new layer
+      </button>
+    </div>
+    <div class="sidebar-panel" id="panel-incidents">
+      <div class="panel-scroll">
+        <div class="panel-section-title">Log New Incident</div>
+        <div class="incident-form">
+          <div class="form-row">
+            <label class="form-label">Incident Name</label>
+            <input type="text" class="form-input" id="inc-name" placeholder="e.g. Airstrike, Evacuation"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Type</label>
+            <select class="form-select" id="inc-type">
+              <option value="airstrike">Airstrike</option>
+              <option value="evacuation">Evacuation Order</option>
+              <option value="ground_op">Ground Operation</option>
+              <option value="security_alert">Security Alert</option>
+              <option value="shelling">Shelling</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Coordinates</label>
+            <div class="form-coords-row">
+              <input type="number" class="form-input" id="inc-lat" placeholder="Latitude"  step="any"/>
+              <input type="number" class="form-input" id="inc-lon" placeholder="Longitude" step="any"/>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Danger Radius (metres)</label>
+            <input type="number" class="form-input" id="inc-radius" value="500" min="0" max="50000"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Analyse Which Layers</label>
+            <div id="inc-layer-checkboxes" class="layer-check-list">
+              <div class="text-muted" style="font-size:11px;padding:4px 0">Add layers first</div>
+            </div>
+          </div>
+          <button class="btn btn-danger btn-full" id="incident-pick-btn">Click Map to Set Location</button>
+          <button class="btn btn-primary btn-full" id="incident-submit-btn">Analyse and Alert</button>
         </div>
+        <div id="incident-stats" class="hidden">
+          <div class="divider"></div>
+          <div class="stat-row">
+            <div class="stat-card"><div class="stat-value" id="stat-endangered">0</div><div class="stat-label">Endangered</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Staff</div></div>
+          </div>
+        </div>
+        <div id="endangered-list"></div>
+      </div>
+    </div>
+    <div class="sidebar-panel" id="panel-alerts">
+      <div class="panel-scroll">
+        <div class="panel-section-title">Alert History</div>
+        <div id="alert-log-list">
+          <div class="text-muted" style="padding:16px 4px;text-align:center">No alerts sent yet.</div>
+        </div>
+      </div>
+    </div>
+  </aside>
 
-        <!-- Add New Layer button — always at the bottom -->
-        <button id="add-layer-btn">
-          <span style="font-size:18px;line-height:1">＋</span>
-          Add new layer
+  <div id="map-container">
+    <div id="map"></div>
+    <div id="map-toolbar">
+      <button class="tool-btn active" id="tool-pan"        data-tip="Pan">PAN</button>
+      <button class="tool-btn"        id="tool-marker"     data-tip="Add Marker">PIN</button>
+      <button class="tool-btn"        id="tool-polyline"   data-tip="Draw Route">LINE</button>
+      <button class="tool-btn"        id="tool-polygon"    data-tip="Draw Zone">ZONE</button>
+      <button class="tool-btn"        id="tool-measure"    data-tip="Measure">MEAS</button>
+      <button class="tool-btn"        id="tool-streetview" data-tip="Street View">SV</button>
+      <div class="toolbar-sep"></div>
+      <button id="incident-report-btn">REPORT INCIDENT</button>
+      <div class="toolbar-sep"></div>
+      <div id="search-box" style="position:relative">
+        <span style="color:var(--text-muted);font-size:14px">S:</span>
+        <input type="text" id="search-input" placeholder="Search place or lat, lng..."/>
+        <div id="search-results" class="hidden"></div>
+      </div>
+    </div>
+    <div id="top-right-controls">
+      <div id="socket-status" title="Sync">
+        <div class="socket-dot connecting" id="socket-dot"></div>
+        <span id="socket-label">SYNC</span>
+      </div>
+      <button class="ctrl-btn" id="open-log-btn"   title="Alert Log">LOG</button>
+      <button class="ctrl-btn" id="theme-toggle"   title="Theme">TH</button>
+      <button class="ctrl-btn" id="user-menu-btn"  title="Account">USR</button>
+      <button class="ctrl-btn" id="sidebar-toggle" title="Toggle Sidebar">SB</button>
+    </div>
+    <div id="map-bottom-controls">
+      <div id="measure-display"></div>
+      <div class="tile-switcher">
+        <button class="tile-btn active" data-tile="osm">Street</button>
+        <button class="tile-btn"        data-tile="satellite">Satellite</button>
+        <button class="tile-btn"        data-tile="terrain">Terrain</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="user-menu-dropdown" class="context-menu hidden" style="min-width:180px">
+  <div style="padding:10px 12px;border-bottom:1px solid var(--border-glass)">
+    <div style="font-size:13px;font-weight:600;color:var(--text-primary)" id="user-menu-name">-</div>
+    <div style="font-size:11px;color:var(--text-muted)" id="user-menu-email">-</div>
+  </div>
+  <div class="context-menu-item danger" onclick="logout()">Sign Out</div>
+</div>
+
+<div id="layer-name-modal" class="modal-backdrop hidden">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-header"><div class="modal-title" id="layer-name-modal-title">New Layer</div><button class="modal-close" data-close="layer-name-modal">X</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-label">Layer Name</label><input type="text" class="form-input" id="layer-name-input" placeholder="e.g. Staff Locations"/></div>
+      <div class="form-row mt-8"><label class="form-label">Colour</label><div class="color-swatch-row" id="layer-color-swatches"></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-close="layer-name-modal">Cancel</button><button class="btn btn-primary" id="layer-name-confirm-btn">Confirm</button></div>
+  </div>
+</div>
+
+<div id="marker-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header"><div class="modal-title">Add Marker</div><button class="modal-close" data-close="marker-modal">X</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-label">Name</label><input type="text" class="form-input" id="marker-name" placeholder="Staff name, location..."/></div>
+      <div class="form-row mt-8"><label class="form-label">Description</label><textarea class="form-textarea" id="marker-desc" placeholder="Department, phone, notes..."></textarea></div>
+      <div class="form-row mt-8"><label class="form-label">Icon Colour</label><div class="color-swatch-row" id="marker-color-swatches"></div></div>
+      <div class="form-row mt-8"><label class="form-label">Target Layer</label><select class="form-select" id="marker-layer-select"></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-close="marker-modal">Cancel</button><button class="btn btn-primary" id="marker-save-btn">Save Marker</button></div>
+  </div>
+</div>
+
+<div id="feature-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header"><div class="modal-title" id="feature-modal-title">Feature Details</div><button class="modal-close" data-close="feature-modal">X</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-label">Name</label><input type="text" class="form-input" id="feature-edit-name"/></div>
+      <div class="form-row mt-8"><label class="form-label">Description</label><textarea class="form-textarea" id="feature-edit-desc"></textarea></div>
+      <div class="form-row mt-8"><label class="form-label">Coordinates</label><div class="feat-popup-coords" id="feature-edit-coords"></div></div>
+      <div class="form-row mt-8"><label class="form-label">Move to Layer</label><select class="form-select" id="feature-move-layer"></select></div>
+      <div class="form-row mt-8"><label class="form-label">Colour</label><div class="color-swatch-row" id="feature-color-swatches"></div></div>
+      <div id="feature-extended-data" class="mt-8"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="feature-delete-btn">Delete</button>
+      <button class="btn btn-secondary"     data-close="feature-modal">Cancel</button>
+      <button class="btn btn-primary"       id="feature-save-btn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="import-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header"><div class="modal-title">Import File</div><button class="modal-close" data-close="import-modal">X</button></div>
+    <div class="modal-body">
+      <div id="import-file-info" class="text-muted" style="margin-bottom:10px"></div>
+      <div class="progress-bar"><div class="progress-fill" id="import-progress" style="width:0%"></div></div>
+      <div class="import-preview-list" id="import-preview-list"></div>
+      <div class="form-row mt-8"><label class="form-label">Import to Layer</label><select class="form-select" id="import-layer-select"></select></div>
+      <div class="form-row mt-8"><label class="form-label">Style by Field (optional)</label><select class="form-select" id="import-style-field"><option value="">-- None --</option></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-close="import-modal">Cancel</button><button class="btn btn-primary" id="import-confirm-btn">Import Features</button></div>
+  </div>
+</div>
+
+<div id="export-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header"><div class="modal-title">Export Data</div><button class="modal-close" data-close="export-modal">X</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-label">Export Which Layers</label><select class="form-select" id="export-layer-select"><option value="all">All Layers</option></select></div>
+      <div class="form-row mt-8"><label class="form-label">Format</label><select class="form-select" id="export-format"><option value="geojson">GeoJSON</option><option value="kml">KML</option><option value="kmz">KMZ</option><option value="csv">CSV</option></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-close="export-modal">Cancel</button><button class="btn btn-success" id="export-confirm-btn">Download</button></div>
+  </div>
+</div>
+
+<div id="streetview-modal" class="modal-backdrop hidden">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header"><div class="modal-title">Street View</div><button class="modal-close" data-close="streetview-modal">X</button></div>
+    <div class="modal-body">
+      <div class="streetview-placeholder"><div style="font-size:40px;margin-bottom:12px">Globe</div><h3>Street View Integration Ready</h3><p>Add your GOOGLE_MAPS_API_KEY in script.js to enable.</p></div>
+      <div class="text-muted mt-8" id="streetview-coords" style="text-align:center;font-family:monospace"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-close="streetview-modal">Close</button></div>
+  </div>
+</div>
+
+<div id="style-field-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header"><div class="modal-title">Style by Field</div><button class="modal-close" data-close="style-field-modal">X</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-label">Colour by Property</label><select class="form-select" id="style-field-select"><option value="">-- Select field --</option></select></div>
+      <div id="style-rules-list" class="mt-8"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-close="style-field-modal">Cancel</button><button class="btn btn-primary" id="style-field-apply-btn">Apply</button></div>
+  </div>
+</div>
+
+<div id="incident-form-modal" class="modal-backdrop hidden">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header"><div class="modal-title">Report Incident</div><button class="modal-close" data-close="incident-form-modal">X</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">Incident Type</label>
+        <div class="inc-type-row" id="inc-type-cards">
+          <div class="inc-type-card selected" data-type="airstrike"><span class="type-icon">💥</span>Airstrike</div>
+          <div class="inc-type-card" data-type="evacuation"><span class="type-icon">🚨</span>Evacuation</div>
+          <div class="inc-type-card" data-type="ground_op"><span class="type-icon">⚔</span>Ground Op</div>
+          <div class="inc-type-card" data-type="security_alert"><span class="type-icon">🔴</span>Security</div>
+          <div class="inc-type-card" data-type="shelling"><span class="type-icon">🔥</span>Shelling</div>
+          <div class="inc-type-card" data-type="other"><span class="type-icon">📍</span>Other</div>
+        </div>
+      </div>
+      <div class="form-row mt-8">
+        <label class="form-label">Incident Name</label>
+        <input type="text" class="form-input" id="p3-inc-name" placeholder="e.g. Strike on Jabalia 14:30"/>
+      </div>
+      <div class="form-row mt-8">
+        <label class="form-label">Location</label>
+        <div class="form-coords-row">
+          <input type="number" class="form-input" id="p3-inc-lat" placeholder="Latitude"  step="any"/>
+          <input type="number" class="form-input" id="p3-inc-lon" placeholder="Longitude" step="any"/>
+        </div>
+        <button class="btn btn-secondary btn-sm mt-8" id="p3-pick-btn" style="width:100%;justify-content:center;margin-top:8px">
+          Click this button, then click anywhere on the map
         </button>
+        <div id="p3-pick-status" class="text-muted" style="font-size:11px;margin-top:4px;text-align:center;min-height:16px"></div>
       </div>
-
-      <!-- ── TAB 2: LIVE INCIDENTS ─────────────────────────────── -->
-      <div class="sidebar-panel" id="panel-incidents">
-        <div class="panel-scroll">
-          <div class="panel-section-title">Log New Incident</div>
-          <div class="incident-form">
-
-            <!-- Incident name -->
-            <div class="form-row">
-              <label class="form-label">Incident Name</label>
-              <input type="text" class="form-input" id="inc-name" placeholder="e.g. Airstrike, Evacuation Order" />
-            </div>
-
-            <!-- Incident type -->
-            <div class="form-row">
-              <label class="form-label">Type</label>
-              <select class="form-select" id="inc-type">
-                <option value="airstrike">💥 Airstrike</option>
-                <option value="evacuation">🚨 Evacuation Order</option>
-                <option value="escalation">⚠️ Escalation</option>
-                <option value="shelling">🔴 Shelling / Artillery</option>
-                <option value="roadblock">🚧 Road Blocked</option>
-                <option value="medical">🏥 Medical Emergency</option>
-                <option value="custom">📍 Custom</option>
-              </select>
-            </div>
-
-            <!-- Coordinates — can be typed OR clicked on map -->
-            <div class="form-row">
-              <label class="form-label">Coordinates (click map or type)</label>
-              <div class="form-coords-row">
-                <input type="number" class="form-input" id="inc-lat" placeholder="Latitude" step="any" />
-                <input type="number" class="form-input" id="inc-lon" placeholder="Longitude" step="any" />
-              </div>
-            </div>
-
-            <!-- Danger radius -->
-            <div class="form-row">
-              <label class="form-label">Danger Radius (metres)</label>
-              <input type="number" class="form-input" id="inc-radius" value="500" min="0" max="50000" />
-            </div>
-
-            <!-- Buttons -->
-            <button class="btn btn-danger btn-full" id="incident-pick-btn">
-              📍 Click map to set location
-            </button>
-            <button class="btn btn-primary btn-full" id="incident-submit-btn">
-              ⚡ Analyse Proximity
-            </button>
-          </div>
-
-          <!-- Stats row (shows after analysis) -->
-          <div id="incident-stats" class="hidden">
-            <div class="divider"></div>
-            <div class="stat-row">
-              <div class="stat-card">
-                <div class="stat-value" id="stat-endangered">0</div>
-                <div class="stat-label">Endangered</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="stat-total">0</div>
-                <div class="stat-label">Total Staff</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Endangered staff cards appear here after analysis -->
-          <div id="endangered-list"></div>
+      <div class="form-row mt-8">
+        <label class="form-label">Danger Radius</label>
+        <div class="radius-slider-row">
+          <input type="range" class="radius-slider" id="p3-radius-slider" min="100" max="10000" step="100" value="500" oninput="updateRadiusPreview(this.value)"/>
+          <div class="radius-value-badge" id="p3-radius-badge">500m</div>
         </div>
       </div>
-
-      <!-- ── TAB 3: ALERT LOGS ─────────────────────────────────── -->
-      <div class="sidebar-panel" id="panel-alerts">
-        <div class="panel-scroll">
-          <div class="panel-section-title">Alert History</div>
-          <!-- Alert log entries are added here by JavaScript -->
-          <div id="alert-log-list">
-            <div class="text-muted" style="padding:16px 4px;text-align:center">
-              No alerts sent yet.<br/>Run an incident analysis to send alerts.
-            </div>
-          </div>
-        </div>
+      <div class="form-row mt-8">
+        <label class="form-label">Analyse Which Layers (leave unchecked for all)</label>
+        <div id="p3-layer-checkboxes" class="layer-check-list"></div>
       </div>
-
-    </aside><!-- end #sidebar -->
-
-    <!-- ════════════════════════════════════════════════════════
-         RIGHT SIDE — Map + Floating Controls
-    ════════════════════════════════════════════════════════ -->
-    <div id="map-container">
-
-      <!-- The Leaflet map renders here -->
-      <div id="map"></div>
-
-      <!-- ── FLOATING TOP TOOLBAR ─────────────────────────────── -->
-      <div id="map-toolbar">
-
-        <!-- Drawing tools -->
-        <button class="tool-btn active" id="tool-pan"       data-tip="Pan / Select">✋</button>
-        <button class="tool-btn"        id="tool-marker"    data-tip="Add Marker">📍</button>
-        <button class="tool-btn"        id="tool-polyline"  data-tip="Draw Route">〰</button>
-        <button class="tool-btn"        id="tool-polygon"   data-tip="Draw Zone">⬡</button>
-        <button class="tool-btn"        id="tool-measure"   data-tip="Measure Distance">📏</button>
-        <button class="tool-btn"        id="tool-streetview"data-tip="Street View">👁</button>
-
-        <div class="toolbar-sep"></div>
-
-        <!-- Red emergency incident button -->
-        <button id="incident-report-btn" data-tip="Report Incident">
-          ⚠ Report Incident
-        </button>
-
-        <div class="toolbar-sep"></div>
-
-        <!-- Search bar -->
-        <div id="search-box" style="position:relative">
-          <span style="color:var(--text-muted);font-size:14px">🔍</span>
-          <input type="text" id="search-input" placeholder="Search place or lat, lng..." />
-          <!-- Search results dropdown (populated by JS) -->
-          <div id="search-results" class="hidden"></div>
-        </div>
-      </div>
-
-      <!-- ── TOP-RIGHT CONTROLS ───────────────────────────────── -->
-      <div id="top-right-controls">
-        <!-- Dark/Light mode toggle -->
-        <!-- Socket.IO connection status dot -->
-        <div id="socket-status" title="Real-time sync status">
-          <div class="socket-dot connecting" id="socket-dot"></div>
-          <span id="socket-label">SYNC</span>
-        </div>
-        <!-- Alert log page button -->
-        <button class="ctrl-btn" id="open-log-btn" title="View Alert Log">📋</button>
-        <button class="ctrl-btn" id="theme-toggle" title="Toggle Dark/Light mode">🌙</button>
-        <!-- Collapse sidebar on mobile -->
-        <button class="ctrl-btn" id="sidebar-toggle" title="Toggle Sidebar">☰</button>
-      </div>
-
-      <!-- ── BOTTOM-RIGHT CONTROLS ────────────────────────────── -->
-      <div id="map-bottom-controls">
-
-        <!-- Distance/Area measurement result -->
-        <div id="measure-display"></div>
-
-        <!-- Tile/base layer switcher -->
-        <div class="tile-switcher">
-          <button class="tile-btn active" data-tile="osm">🗺 Street</button>
-          <button class="tile-btn"        data-tile="satellite">🛰 Satellite</button>
-          <button class="tile-btn"        data-tile="terrain">⛰ Terrain</button>
-        </div>
-      </div>
-
-    </div><!-- end #map-container -->
-
-  </div><!-- end #app -->
-
-
-  <!-- ════════════════════════════════════════════════════════════
-       MODALS — hidden by default, shown by JavaScript
-  ════════════════════════════════════════════════════════════ -->
-
-  <!-- ── MARKER ADD MODAL ──────────────────────────────────────── -->
-  <div id="marker-modal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title">📍 Add Marker</div>
-        <button class="modal-close" data-close="marker-modal">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label class="form-label">Name</label>
-          <input type="text" class="form-input" id="marker-name" placeholder="Staff name, location, etc." />
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Description</label>
-          <textarea class="form-textarea" id="marker-desc" placeholder="Department, phone, notes..."></textarea>
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Icon Color</label>
-          <div class="color-swatch-row" id="marker-color-swatches">
-            <!-- Swatches are injected by JS -->
-          </div>
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Target Layer</label>
-          <select class="form-select" id="marker-layer-select"></select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-close="marker-modal">Cancel</button>
-        <button class="btn btn-primary" id="marker-save-btn">Save Marker</button>
-      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-secondary" data-close="incident-form-modal">Cancel</button>
+      <button class="btn btn-primary"   id="p3-analyze-btn" style="background:var(--accent-red);box-shadow:0 2px 10px rgba(239,68,68,0.3)">Analyse and Alert</button>
     </div>
   </div>
+</div>
 
-  <!-- ── FEATURE INFO / EDIT MODAL ─────────────────────────────── -->
-  <div id="feature-modal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title" id="feature-modal-title">Feature Details</div>
-        <button class="modal-close" data-close="feature-modal">✕</button>
+<div id="alert-results-modal" class="modal-backdrop hidden">
+  <div class="modal-box" style="max-width:560px;padding:0">
+    <div class="alert-results-header">
+      <div class="alert-count-badge" id="ar-count">0</div>
+      <div>
+        <div class="alert-results-title" id="ar-title">Staff within danger zone</div>
+        <div class="alert-results-sub"   id="ar-sub">Sorted by distance</div>
       </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label class="form-label">Name</label>
-          <input type="text" class="form-input" id="feature-edit-name" />
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Description</label>
-          <textarea class="form-textarea" id="feature-edit-desc"></textarea>
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Coordinates</label>
-          <div class="feat-popup-coords" id="feature-edit-coords" style="font-size:12px"></div>
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Move to Layer</label>
-          <select class="form-select" id="feature-move-layer"></select>
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Color</label>
-          <div class="color-swatch-row" id="feature-color-swatches"></div>
-        </div>
-        <!-- Extended data / properties table -->
-        <div id="feature-extended-data" class="mt-8"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-danger btn-sm" id="feature-delete-btn">Delete</button>
-        <button class="btn btn-secondary" data-close="feature-modal">Cancel</button>
-        <button class="btn btn-primary" id="feature-save-btn">Save Changes</button>
-      </div>
+      <button class="modal-close" data-close="alert-results-modal" style="margin-left:auto">X</button>
+    </div>
+    <div class="endangered-table" id="endangered-table-body"></div>
+    <div class="bulk-action-bar">
+      <span class="label">Alert All Via:</span>
+      <label class="bulk-channel-check"><input type="checkbox" id="bulk-ch-whatsapp" checked> WhatsApp</label>
+      <label class="bulk-channel-check"><input type="checkbox" id="bulk-ch-telegram"> Telegram</label>
+      <label class="bulk-channel-check"><input type="checkbox" id="bulk-ch-sms"> SMS</label>
+      <div style="flex:1"></div>
+      <button class="btn btn-danger   btn-sm" id="alert-all-btn">Alert All</button>
+      <button class="btn btn-secondary btn-sm" id="alert-200m-btn">Under 200m</button>
     </div>
   </div>
+</div>
 
-  <!-- ── IMPORT PREVIEW MODAL ──────────────────────────────────── -->
-  <div id="import-modal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title">⬆ Import File</div>
-        <button class="modal-close" data-close="import-modal">✕</button>
-      </div>
-      <div class="modal-body">
-        <!-- File info -->
-        <div id="import-file-info" class="text-muted" style="margin-bottom:10px"></div>
-
-        <!-- Progress bar (shown during parsing) -->
-        <div class="progress-bar">
-          <div class="progress-fill" id="import-progress" style="width:0%"></div>
-        </div>
-
-        <!-- Feature preview list -->
-        <div class="import-preview-list" id="import-preview-list"></div>
-
-        <!-- Target layer selection -->
-        <div class="form-row mt-8">
-          <label class="form-label">Import to Layer</label>
-          <select class="form-select" id="import-layer-select"></select>
-        </div>
-
-        <!-- Style by field option -->
-        <div class="form-row mt-8">
-          <label class="form-label">Style by Field (optional)</label>
-          <select class="form-select" id="import-style-field">
-            <option value="">-- None (use layer color) --</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-close="import-modal">Cancel</button>
-        <button class="btn btn-primary" id="import-confirm-btn">Import Features</button>
-      </div>
-    </div>
+<div id="alert-log-panel" class="hidden">
+  <div class="log-page-header">
+    <button class="ctrl-btn" id="close-log-btn" title="Back to map">Back</button>
+    <div class="log-page-title">Incident and Alert Log</div>
+    <button class="btn btn-secondary btn-sm" onclick="loadIncidentLog()">Refresh</button>
   </div>
-
-  <!-- ── EXPORT MODAL ───────────────────────────────────────────── -->
-  <div id="export-modal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title">⬇ Export Data</div>
-        <button class="modal-close" data-close="export-modal">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label class="form-label">Export Which Layers</label>
-          <select class="form-select" id="export-layer-select">
-            <option value="all">All Layers</option>
-          </select>
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Format</label>
-          <select class="form-select" id="export-format">
-            <option value="geojson">GeoJSON (.geojson)</option>
-            <option value="kml">KML (.kml) — Google Maps & Maps.me</option>
-            <option value="kmz">KMZ (.kmz) — Compressed KML</option>
-            <option value="csv">CSV (.csv) — Points only</option>
-          </select>
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Include Live Incidents</label>
-          <select class="form-select" id="export-incidents">
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-close="export-modal">Cancel</button>
-        <button class="btn btn-success" id="export-confirm-btn">⬇ Download File</button>
-      </div>
+  <div class="log-page-body">
+    <div class="stat-row" style="margin-bottom:20px;max-width:480px">
+      <div class="stat-card"><div class="stat-value" id="log-total-incidents">-</div><div class="stat-label">Total Incidents</div></div>
+      <div class="stat-card"><div class="stat-value" id="log-total-alerts">-</div><div class="stat-label">Alerts Sent</div></div>
     </div>
+    <table class="incidents-table">
+      <thead><tr><th>Date / Time</th><th>Type</th><th>Name</th><th>Radius</th><th>Alerted</th><th></th></tr></thead>
+      <tbody id="incidents-table-body"><tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px">Loading...</td></tr></tbody>
+    </table>
   </div>
-
-  <!-- ── STREET VIEW MODAL ──────────────────────────────────────── -->
-  <div id="streetview-modal" class="modal-backdrop hidden">
-    <div class="modal-box" style="max-width:560px">
-      <div class="modal-header">
-        <div class="modal-title">👁 Street View</div>
-        <button class="modal-close" data-close="streetview-modal">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="streetview-placeholder">
-          <div style="font-size:40px;margin-bottom:12px">🌐</div>
-          <h3>Street View Integration Ready</h3>
-          <p>
-            Free map data (OpenStreetMap) does not include street-level imagery.<br/><br/>
-            <strong>To enable Street View:</strong><br/>
-            1. Get a Google Maps API key (paid, from Google Cloud Console)<br/>
-            2. Open <code>script.js</code> and find <code>GOOGLE_MAPS_API_KEY</code><br/>
-            3. Replace the placeholder with your key<br/><br/>
-            <strong>Alternative (free):</strong> If you have your own 360° photos,
-            the <code>Pannellum</code> viewer can be integrated at the marked location in script.js.
-          </p>
-        </div>
-        <!-- Location where street view was requested -->
-        <div class="text-muted mt-8" id="streetview-coords" style="text-align:center;font-family:monospace"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-close="streetview-modal">Close</button>
-      </div>
+  <div id="log-detail-drawer" class="log-detail-drawer hidden">
+    <div class="drawer-handle"></div>
+    <div style="padding:14px 20px 6px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-glass)">
+      <div style="flex:1;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text-primary)" id="drawer-title">Alert Details</div>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('log-detail-drawer').classList.add('hidden')">Close</button>
     </div>
+    <div id="drawer-body" style="padding:8px 0"></div>
   </div>
+</div>
 
-  <!-- ── ADD/RENAME LAYER MODAL ─────────────────────────────────── -->
-  <div id="layer-name-modal" class="modal-backdrop hidden">
-    <div class="modal-box" style="max-width:360px">
-      <div class="modal-header">
-        <div class="modal-title" id="layer-name-modal-title">New Layer</div>
-        <button class="modal-close" data-close="layer-name-modal">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label class="form-label">Layer Name</label>
-          <input type="text" class="form-input" id="layer-name-input" placeholder="e.g. Staff Locations" />
-        </div>
-        <div class="form-row mt-8">
-          <label class="form-label">Layer Color</label>
-          <div class="color-swatch-row" id="layer-color-swatches"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-close="layer-name-modal">Cancel</button>
-        <button class="btn btn-primary" id="layer-name-confirm-btn">Confirm</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── STYLE-BY-FIELD MODAL ───────────────────────────────────── -->
-  <div id="style-field-modal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title">🎨 Style by Field</div>
-        <button class="modal-close" data-close="style-field-modal">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label class="form-label">Color by Property</label>
-          <select class="form-select" id="style-field-select">
-            <option value="">-- Select field --</option>
-          </select>
-        </div>
-        <!-- Rules list — one row per unique value found -->
-        <div id="style-rules-list" class="mt-8"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-close="style-field-modal">Cancel</button>
-        <button class="btn btn-primary" id="style-field-apply-btn">Apply Styling</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ JAVASCRIPT ═══════════════════════════════════════════════
-       Loaded LAST so all HTML elements exist before JS runs.
-  ════════════════════════════════════════════════════════════ -->
-  <script src="script.js"></script>
-
-
-
-  <!-- ════════════════════════════════════════════════════════
-       PHASE 3 MODALS
-  ════════════════════════════════════════════════════════ -->
-
-  <!-- ── INCIDENT REPORT FORM MODAL ───────────────────────── -->
-  <div id="incident-form-modal" class="modal-backdrop hidden">
-    <div class="modal-box" style="max-width:500px">
-      <div class="modal-header">
-        <div class="modal-title">⚠ Report Incident</div>
-        <button class="modal-close" data-close="incident-form-modal">✕</button>
-      </div>
-      <div class="modal-body">
-
-        <!-- Incident type cards -->
-        <div class="form-row">
-          <label class="form-label">Incident Type</label>
-          <div class="inc-type-row" id="inc-type-cards">
-            <div class="inc-type-card selected" data-type="airstrike">
-              <span class="type-icon">💥</span>Airstrike
-            </div>
-            <div class="inc-type-card" data-type="evacuation">
-              <span class="type-icon">🚨</span>Evacuation
-            </div>
-            <div class="inc-type-card" data-type="ground_op">
-              <span class="type-icon">⚔</span>Ground Op
-            </div>
-            <div class="inc-type-card" data-type="security_alert">
-              <span class="type-icon">🔴</span>Security Alert
-            </div>
-            <div class="inc-type-card" data-type="shelling">
-              <span class="type-icon">🔥</span>Shelling
-            </div>
-            <div class="inc-type-card" data-type="other">
-              <span class="type-icon">📍</span>Other
-            </div>
-          </div>
-        </div>
-
-        <!-- Name / description -->
-        <div class="form-row mt-8">
-          <label class="form-label">Incident Name / Description</label>
-          <input type="text" class="form-input" id="p3-inc-name"
-                 placeholder="e.g. Airstrike on Jabalia camp — 14:30 UTC" />
-        </div>
-
-        <!-- Coordinates + map pick -->
-        <div class="form-row mt-8">
-          <label class="form-label">Location</label>
-          <div class="form-coords-row">
-            <input type="number" class="form-input" id="p3-inc-lat"
-                   placeholder="Latitude" step="any" />
-            <input type="number" class="form-input" id="p3-inc-lon"
-                   placeholder="Longitude" step="any" />
-          </div>
-          <div class="coord-pick-hint" id="p3-pick-btn">
-            📍 Click map to set location — or click here to activate
-          </div>
-        </div>
-
-        <!-- Danger radius slider -->
-        <div class="form-row mt-8">
-          <label class="form-label">
-            Danger Radius
-            <span style="color:var(--text-muted);font-size:10px;margin-left:6px">
-              drag to preview circle on map
-            </span>
-          </label>
-          <div class="radius-slider-row">
-            <input type="range" class="radius-slider" id="p3-radius-slider"
-                   min="100" max="10000" step="100" value="500"
-                   oninput="updateRadiusPreview(this.value)" />
-            <div class="radius-value-badge" id="p3-radius-badge">500m</div>
-          </div>
-        </div>
-
-      </div>
-      <div class="modal-footer" style="justify-content:space-between">
-        <button class="btn btn-secondary" data-close="incident-form-modal">Cancel</button>
-        <button class="btn btn-primary" id="p3-analyze-btn"
-                style="background:var(--accent-red);box-shadow:0 2px 10px rgba(239,68,68,0.3)">
-          ⚡ Analyze & Alert
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── ALERT RESULTS MODAL ───────────────────────────────── -->
-  <div id="alert-results-modal" class="modal-backdrop hidden">
-    <div class="modal-box" style="max-width:560px;padding:0">
-
-      <!-- Header with count -->
-      <div class="alert-results-header">
-        <div class="alert-count-badge" id="ar-count">0</div>
-        <div>
-          <div class="alert-results-title" id="ar-title">Staff within danger zone</div>
-          <div class="alert-results-sub"   id="ar-sub">Sorted by distance from incident</div>
-        </div>
-        <button class="modal-close" data-close="alert-results-modal"
-                style="margin-left:auto">✕</button>
-      </div>
-
-      <!-- Scrollable list of endangered staff -->
-      <div class="endangered-table" id="endangered-table-body"></div>
-
-      <!-- Bulk action footer -->
-      <div class="bulk-action-bar">
-        <span class="label">Alert All Via:</span>
-        <label class="bulk-channel-check">
-          <input type="checkbox" id="bulk-ch-whatsapp" checked> 💬 WhatsApp
-        </label>
-        <label class="bulk-channel-check">
-          <input type="checkbox" id="bulk-ch-telegram"> ✈ Telegram
-        </label>
-        <label class="bulk-channel-check">
-          <input type="checkbox" id="bulk-ch-sms"> 📱 SMS
-        </label>
-        <div style="flex:1"></div>
-        <button class="btn btn-danger btn-sm" id="alert-all-btn">⚡ Alert All</button>
-        <button class="btn btn-secondary btn-sm" id="alert-200m-btn">🔴 &lt;200m only</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── ALERT LOG FULL-PAGE PANEL ─────────────────────────── -->
-  <div id="alert-log-panel" class="hidden">
-
-    <div class="log-page-header">
-      <button class="ctrl-btn" id="close-log-btn" title="Back to map">← Back</button>
-      <div class="log-page-title">📋 Incident & Alert Log</div>
-      <button class="btn btn-secondary btn-sm" onclick="loadIncidentLog()">↻ Refresh</button>
-    </div>
-
-    <div class="log-page-body">
-
-      <!-- Stats row -->
-      <div class="stat-row" style="margin-bottom:20px;max-width:480px">
-        <div class="stat-card">
-          <div class="stat-value" id="log-total-incidents">—</div>
-          <div class="stat-label">Total Incidents</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="log-total-alerts">—</div>
-          <div class="stat-label">Alerts Sent</div>
-        </div>
-      </div>
-
-      <!-- Incidents table -->
-      <table class="incidents-table" id="incidents-table">
-        <thead>
-          <tr>
-            <th>Date / Time</th>
-            <th>Type</th>
-            <th>Name</th>
-            <th>Radius</th>
-            <th>Alerted</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="incidents-table-body">
-          <tr>
-            <td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px">
-              Loading...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Detail drawer (slides up when row is clicked) -->
-    <div id="log-detail-drawer" class="log-detail-drawer hidden">
-      <div class="drawer-handle"></div>
-      <div style="padding:14px 20px 6px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-glass)">
-        <div style="flex:1;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text-primary)" id="drawer-title">
-          Alert Details
-        </div>
-        <button class="btn btn-secondary btn-sm"
-                onclick="document.getElementById('log-detail-drawer').classList.add('hidden')">
-          Close
-        </button>
-      </div>
-      <div id="drawer-body" style="padding:8px 0"></div>
-    </div>
-
-  </div><!-- end alert-log-panel -->
-
+<script src="script.js"></script>
 </body>
 </html>
